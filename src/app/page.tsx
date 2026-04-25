@@ -103,6 +103,19 @@ export default function Home() {
         setTasks(updatedTasks);
     };
 
+    const deleteSubtask = (taskId: string, subId: string) => {
+        const updatedTasks = tasks.map(t => {
+            if (t.id === taskId) {
+                const updatedSubs = t.subtasks.filter(s => s.id !== subId);
+                const updated = { ...t, subtasks: updatedSubs };
+                setSelectedTask(updated);
+                return updated;
+            }
+            return t;
+        });
+        setTasks(updatedTasks);
+    };
+
     const addComment = (taskId: string) => {
         if (!newComment.trim()) return;
         const comment = {
@@ -123,10 +136,35 @@ export default function Home() {
         setNewComment('');
     };
 
+    const deleteComment = (taskId: string, commentId: string) => {
+        const updatedTasks = tasks.map(t => {
+            if (t.id === taskId) {
+                const updatedComments = t.comments.filter(c => c.id !== commentId);
+                const updated = { ...t, comments: updatedComments };
+                setSelectedTask(updated);
+                return updated;
+            }
+            return t;
+        });
+        setTasks(updatedTasks);
+    };
+
     const updateTaskDeadline = (taskId: string, newDate: string) => {
         const updatedTasks = tasks.map(t => {
             if (t.id === taskId) {
                 const updated = { ...t, deadline: newDate };
+                setSelectedTask(updated);
+                return updated;
+            }
+            return t;
+        });
+        setTasks(updatedTasks);
+    };
+
+    const updateTaskCategory = (taskId: string, newCategory: string) => {
+        const updatedTasks = tasks.map(t => {
+            if (t.id === taskId) {
+                const updated = { ...t, category: newCategory };
                 setSelectedTask(updated);
                 return updated;
             }
@@ -166,13 +204,16 @@ export default function Home() {
                         setSelectedTask={setSelectedTask}
                         deleteTask={deleteTask}
                         updateTaskDeadline={updateTaskDeadline}
+                        updateTaskCategory={updateTaskCategory}
                         newSubtask={newSubtask}
                         setNewSubtask={setNewSubtask}
                         addSubtask={addSubtask}
                         toggleSubtask={toggleSubtask}
+                        deleteSubtask={deleteSubtask}
                         newComment={newComment}
                         setNewComment={setNewComment}
                         addComment={addComment}
+                        deleteComment={deleteComment}
                         currentUser={currentUser}
                     />
                 </div>
