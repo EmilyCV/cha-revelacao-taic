@@ -1,22 +1,21 @@
 "use client";
 
 import { useRef } from "react";
-import { Calendar, Gamepad2, Edit2 } from "lucide-react";
+import { Calendar, Gamepad2, Edit2, LogOut } from "lucide-react";
 import { formatDisplayDate } from "@/lib/utils";
 
 interface HeaderProps {
     currentUser: string;
-    setCurrentUser: (user: string) => void;
     eventDate: string;
     setEventDate: (date: string) => void;
+    onLogout?: () => void;
 }
 
-export default function Header({ currentUser, setCurrentUser, eventDate, setEventDate }: HeaderProps) {
+export default function Header({ currentUser, eventDate, setEventDate, onLogout }: HeaderProps) {
     const dateInputRef = useRef<HTMLInputElement>(null);
 
     const handleEditClick = () => {
         if (dateInputRef.current) {
-            // Tenta abrir o seletor nativo de forma programática (moderno)
             if ('showPicker' in HTMLInputElement.prototype) {
                 try {
                     dateInputRef.current.showPicker();
@@ -24,7 +23,6 @@ export default function Header({ currentUser, setCurrentUser, eventDate, setEven
                     dateInputRef.current.focus();
                 }
             } else {
-                // Fallback para navegadores mais antigos
                 dateInputRef.current.click();
             }
         }
@@ -48,7 +46,6 @@ export default function Header({ currentUser, setCurrentUser, eventDate, setEven
                         </span>
                         <Edit2 className="w-3.5 h-3.5 text-red-200 group-hover:scale-110 transition-transform" />
                         
-                        {/* Input escondido mas funcional via Ref */}
                         <input 
                             ref={dateInputRef}
                             type="date"
@@ -59,19 +56,26 @@ export default function Header({ currentUser, setCurrentUser, eventDate, setEven
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2 bg-red-800/40 p-1.5 rounded-lg backdrop-blur-sm border border-red-500/30">
-                    <span className="text-xs font-semibold px-2">Logado como:</span>
-                    {['Emily', 'Daniela'].map(name => (
-                        <button
-                            key={name}
-                            onClick={() => setCurrentUser(name)}
-                            className={`text-xs px-3 py-1.5 rounded-md font-bold transition-all ${currentUser === name ?
-                                    'bg-white text-red-700 shadow-sm' : 'text-red-100 hover:bg-red-800/50'
-                                }`}
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3 bg-red-800/40 px-4 py-2 rounded-xl backdrop-blur-sm border border-red-500/30">
+                        <div className="flex flex-col items-end">
+                            <span className="text-[10px] uppercase tracking-widest font-bold text-red-200 leading-none mb-1">Organizador(a)</span>
+                            <span className="text-sm font-black text-white leading-none">{currentUser}</span>
+                        </div>
+                        <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-black text-xs border border-white/10">
+                            {currentUser.charAt(0)}
+                        </div>
+                    </div>
+
+                    {onLogout && (
+                        <button 
+                            onClick={onLogout}
+                            className="p-2.5 bg-white/10 hover:bg-red-500 text-white rounded-xl border border-white/20 transition-all group shadow-lg"
+                            title="Sair do Sistema"
                         >
-                            {name}
+                            <LogOut className="w-5 h-5" />
                         </button>
-                    ))}
+                    )}
                 </div>
             </div>
         </header>
