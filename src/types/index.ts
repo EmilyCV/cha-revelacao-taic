@@ -9,6 +9,7 @@ export interface Subtask {
   id: string;
   text: string;
   completed: boolean;
+  spent?: number; // Valor gasto nesta sub-etapa
 }
 
 export interface Task {
@@ -19,4 +20,6 @@ export interface Task {
   completed: boolean;
   subtasks: Subtask[];
   comments: Comment[];
+  budget?: number; // Orçamento total planejado para a missão
+  spent?: number;  // Valor gasto total (pode ser a soma das subtasks)
 }

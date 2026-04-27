@@ -144,12 +144,29 @@ export default function Home() {
         if (selectedTask?.id === id) setSelectedTask(null);
     };
 
+    const updateTaskSpent = async (taskId: string, newSpent: number) => {
+        await updateDoc(doc(db, 'tasks', taskId), { spent: newSpent });
+    };
+
+    const updateSubtaskSpent = async (taskId: string, subId: string, newSpent: number) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            const updatedSubs = task.subtasks.map(s => s.id === subId ? { ...s, spent: newSpent } : s);
+            const totalSpent = updatedSubs.reduce((acc, curr) => acc + (curr.spent || 0), 0);
+            await updateDoc(doc(db, 'tasks', taskId), { 
+                subtasks: updatedSubs,
+                spent: totalSpent
+            });
+        }
+    };
+
     const addSubtask = async (taskId: string) => {
         if (!newSubtask.trim()) return;
         const task = tasks.find(t => t.id === taskId);
         if (task) {
-            const newSub = { id: Date.now().toString(), text: newSubtask, completed: false };
-            await updateDoc(doc(db, 'tasks', taskId), { subtasks: [...task.subtasks, newSub] });
+            const newSub = { id: Date.now().toString(), text: newSubtask, completed: false, spent: 0 };
+            const updatedSubs = [...task.subtasks, newSub];
+            await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubs });
             setNewSubtask('');
         }
     };
@@ -166,7 +183,12 @@ export default function Home() {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
             const updatedSubs = task.subtasks.filter(s => s.id !== subId);
-            await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubs });
+            // Recalcula o total ao deletar
+            const totalSpent = updatedSubs.reduce((acc, curr) => acc + (curr.spent || 0), 0);
+            await updateDoc(doc(db, 'tasks', taskId), { 
+                subtasks: updatedSubs,
+                spent: totalSpent
+            });
         }
     };
 
@@ -250,7 +272,25 @@ export default function Home() {
                     <TaskBoard tasks={tasks} newTask={newTask} setNewTask={setNewTask} addTask={addTask} toggleTask={toggleTask} selectedTask={selectedTask} setSelectedTask={setSelectedTask} />
                 </div>
                 <div className={`md:w-[400px] lg:w-[450px] shrink-0 transition-all duration-300 ease-in-out ${selectedTask ? 'block' : 'hidden md:block opacity-50 pointer-events-none'}`}>
-                    <TaskDetails selectedTask={selectedTask} setSelectedTask={setSelectedTask} deleteTask={deleteTask} updateTaskDeadline={updateTaskDeadline} updateTaskCategory={updateTaskCategory} newSubtask={newSubtask} setNewSubtask={setNewSubtask} addSubtask={addSubtask} toggleSubtask={toggleSubtask} deleteSubtask={deleteSubtask} newComment={newComment} setNewComment={setNewComment} addComment={addComment} deleteComment={deleteComment} currentUser={currentUser} />
+                    <TaskDetails 
+                        selectedTask={selectedTask} 
+                        setSelectedTask={setSelectedTask} 
+                        deleteTask={deleteTask} 
+                        updateTaskDeadline={updateTaskDeadline} 
+                        updateTaskCategory={updateTaskCategory} 
+                        updateTaskSpent={updateTaskSpent}
+                        updateSubtaskSpent={updateSubtaskSpent}
+                        newSubtask={newSubtask} 
+                        setNewSubtask={setNewSubtask} 
+                        addSubtask={addSubtask} 
+                        toggleSubtask={toggleSubtask} 
+                        deleteSubtask={deleteSubtask} 
+                        newComment={newComment} 
+                        setNewComment={setNewComment} 
+                        addComment={addComment} 
+                        deleteComment={deleteComment} 
+                        currentUser={currentUser} 
+                    />
                 </div>
             </main>
         </div>

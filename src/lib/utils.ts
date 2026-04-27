@@ -22,6 +22,21 @@ export const daysUntil = (dateStr: string) => {
     return diffDays;
 };
 
+export const formatCurrency = (value: number | undefined) => {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'decimal',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(value || 0);
+};
+
+export const parseCurrencyInput = (input: string): number => {
+    // Remove tudo que não for número
+    const digits = input.replace(/\D/g, '');
+    // Converte para decimal (centavos)
+    return Number(digits) / 100;
+};
+
 export const getDeadlineColor = (dateStr: string, type: 'badge' | 'text' = 'badge') => {
     const days = daysUntil(dateStr);
     

@@ -1,10 +1,11 @@
 "use client";
 
 import { Task } from "@/types";
-import { getDeadlineColor } from "@/lib/utils";
+import { getDeadlineColor, formatCurrency, parseCurrencyInput } from "@/lib/utils";
 import {
     Clock, Trash2, X, ListTodo, CheckSquare,
-    MessageSquare, SendHorizontal, Gamepad2, Tag
+    MessageSquare, SendHorizontal, Gamepad2, Tag,
+    Wallet, ArrowRight
 } from 'lucide-react';
 
 interface TaskDetailsProps {
@@ -13,6 +14,8 @@ interface TaskDetailsProps {
     deleteTask: (id: string) => void;
     updateTaskDeadline: (taskId: string, newDate: string) => void;
     updateTaskCategory: (taskId: string, newCategory: string) => void;
+    updateTaskSpent: (taskId: string, newSpent: number) => void;
+    updateSubtaskSpent: (taskId: string, subId: string, newSpent: number) => void;
     newSubtask: string;
     setNewSubtask: (val: string) => void;
     addSubtask: (taskId: string) => void;
@@ -33,6 +36,8 @@ export default function TaskDetails({
     deleteTask,
     updateTaskDeadline,
     updateTaskCategory,
+    updateTaskSpent,
+    updateSubtaskSpent,
     newSubtask,
     setNewSubtask,
     addSubtask,
@@ -52,6 +57,18 @@ export default function TaskDetails({
             </div>
         );
     }
+
+    const hasSubtaskCosts = selectedTask.subtasks?.some(s => (s.spent || 0) > 0);
+
+    const handleMainSpentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const val = parseCurrencyInput(e.target.value);
+        updateTaskSpent(selectedTask.id, val);
+    };
+
+    const handleSubtaskSpentChange = (subId: string, value: string) => {
+        const val = parseCurrencyInput(value);
+        updateSubtaskSpent(selectedTask.id, subId, val);
+    };
 
     return (
         <div className="bg-white rounded-xl shadow-lg border border-blue-100 h-[70vh] flex flex-col overflow-hidden sticky top-6">
@@ -94,23 +111,45 @@ export default function TaskDetails({
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/30">
-                {/* Sugestões de Categoria */}
-                <section>
-                    <div className="flex flex-wrap gap-1.5">
-                        {CATEGORY_SUGGESTIONS.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => updateTaskCategory(selectedTask.id, cat)}
-                                className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
-                                    selectedTask.category === cat 
-                                    ? 'bg-blue-500 text-white border-blue-500 font-bold' 
-                                    : 'bg-white text-slate-500 border-slate-200 hover:border-blue-300 hover:text-blue-500'
-                                }`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                {/* Seção de Gasto da Missão */}
+                <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
+                                <Wallet className="w-4 h-4" />
+                            </div>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                Gasto da Missão
+                            </h4>
+                        </div>
+                        {hasSubtaskCosts && (
+                            <div className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1 rounded-full shadow-md shadow-blue-200">
+                                <span className="text-[9px] font-black uppercase tracking-tighter">Soma Automática</span>
+                            </div>
+                        )}
                     </div>
+                    
+                    <div className="relative group">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">R$</div>
+                        <input 
+                            type="text"
+                            inputMode="numeric"
+                            value={formatCurrency(selectedTask.spent)}
+                            readOnly={hasSubtaskCosts}
+                            onChange={handleMainSpentChange}
+                            className={`w-full bg-slate-50 border-2 rounded-xl py-3 pl-11 pr-4 text-2xl font-black transition-all outline-none ${
+                                hasSubtaskCosts 
+                                ? 'border-blue-100 text-blue-600 cursor-not-allowed' 
+                                : 'border-slate-100 text-slate-700 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100'
+                            }`}
+                            placeholder="0,00"
+                        />
+                    </div>
+                    {hasSubtaskCosts && (
+                        <p className="text-[10px] text-blue-400 mt-2.5 font-bold flex items-center gap-1">
+                            <ArrowRight className="w-3 h-3" /> Valor consolidado das sub-etapas
+                        </p>
+                    )}
                 </section>
 
                 <section>
@@ -118,27 +157,39 @@ export default function TaskDetails({
                         <ListTodo className="w-4 h-4 text-blue-500" /> Sub-etapas
                     </h4>
 
-                    <div className="space-y-2 mb-3">
+                    <div className="space-y-3 mb-4">
                         {selectedTask.subtasks?.map(sub => (
-                            <div key={sub.id} className="flex items-center justify-between group bg-white/50 p-2 rounded-lg hover:bg-white transition-colors">
-                                <div className="flex items-start gap-3 flex-1 min-w-0">
-                                    <button onClick={() => toggleSubtask(selectedTask.id, sub.id)} className="mt-0.5">
-                                        {sub.completed
-                                            ? <CheckSquare className="w-4 h-4 text-green-500" />
-                                            : <div className="w-4 h-4 border-2 border-slate-300 rounded-[3px] group-hover:border-blue-400 transition-colors" />
-                                        }
+                            <div key={sub.id} className="bg-white p-3 rounded-xl border border-slate-100 hover:border-blue-200 transition-all shadow-sm group">
+                                <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                        <button onClick={() => toggleSubtask(selectedTask.id, sub.id)} className="mt-0.5">
+                                            {sub.completed
+                                                ? <CheckSquare className="w-4 h-4 text-green-500" />
+                                                : <div className="w-4 h-4 border-2 border-slate-300 rounded-[3px] group-hover:border-blue-400 transition-colors" />
+                                            }
+                                        </button>
+                                        <span className={`text-sm font-medium break-words ${sub.completed ? 'line-through text-slate-400' : 'text-slate-600'}`}>
+                                            {sub.text}
+                                        </span>
+                                    </div>
+                                    <button 
+                                        onClick={() => deleteSubtask(selectedTask.id, sub.id)}
+                                        className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" />
                                     </button>
-                                    <span className={`text-sm break-words ${sub.completed ? 'line-through text-slate-400' : 'text-slate-600'}`}>
-                                        {sub.text}
-                                    </span>
                                 </div>
-                                <button 
-                                    onClick={() => deleteSubtask(selectedTask.id, sub.id)}
-                                    className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                    title="Remover sub-etapa"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                </button>
+                                
+                                <div className="flex items-center gap-2 ml-7 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 w-fit focus-within:border-blue-300 transition-all">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase">R$</span>
+                                    <input 
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formatCurrency(sub.spent)}
+                                        onChange={(e) => handleSubtaskSpentChange(sub.id, e.target.value)}
+                                        className="text-[12px] font-black text-blue-600 bg-transparent border-none p-0 w-24 focus:ring-0"
+                                    />
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -148,9 +199,9 @@ export default function TaskDetails({
                             type="text" value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && addSubtask(selectedTask.id)}
                             placeholder="Adicionar sub-etapa..."
-                            className="flex-1 text-xs border border-slate-200 rounded-md px-3 py-2 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="flex-1 text-xs border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                         />
-                        <button onClick={() => addSubtask(selectedTask.id)} className="px-3 py-2 bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 text-xs font-bold">
+                        <button onClick={() => addSubtask(selectedTask.id)} className="px-4 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-black text-xs font-bold transition-all active:scale-95">
                             Add
                         </button>
                     </div>
@@ -174,7 +225,6 @@ export default function TaskDetails({
                                             <button 
                                                 onClick={() => deleteComment(selectedTask.id, comment.id)}
                                                 className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                                title="Excluir nota"
                                             >
                                                 <Trash2 className="w-3 h-3" />
                                             </button>
@@ -186,7 +236,7 @@ export default function TaskDetails({
                         )}
                     </div>
 
-                    <div className="flex gap-2 items-start bg-white p-1 rounded-lg border border-slate-200 focus-within:ring-1 focus-within:ring-blue-500">
+                    <div className="flex gap-2 items-start bg-white p-1 rounded-lg border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
                         <textarea
                             value={newComment} onChange={(e) => setNewComment(e.target.value)}
                             placeholder={`Escreva algo como ${currentUser}...`}
