@@ -62,12 +62,12 @@ export default function TaskDetails({
                     
                     <div className="flex flex-wrap items-center gap-3 mt-3">
                         <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1 rounded border border-slate-200 shadow-sm">
-                            <Clock className={`w-3.5 h-3.5 ${getDeadlineColor(selectedTask.deadline)}`} />
+                            <Clock className={`w-3.5 h-3.5 ${getDeadlineColor(selectedTask.deadline, 'text')}`} />
                             <input
                                 type="date"
                                 value={selectedTask.deadline}
                                 onChange={(e) => updateTaskDeadline(selectedTask.id, e.target.value)}
-                                className={`text-xs bg-transparent border-none focus:ring-0 p-0 cursor-pointer font-bold ${getDeadlineColor(selectedTask.deadline)}`}
+                                className={`text-xs bg-transparent border-none focus:ring-0 p-0 cursor-pointer font-bold ${getDeadlineColor(selectedTask.deadline, 'text')}`}
                             />
                         </div>
 

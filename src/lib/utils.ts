@@ -22,27 +22,27 @@ export const daysUntil = (dateStr: string) => {
     return diffDays;
 };
 
-export const getDeadlineColor = (dateStr: string) => {
+export const getDeadlineColor = (dateStr: string, type: 'badge' | 'text' = 'badge') => {
     const days = daysUntil(dateStr);
     
-    // Lógica de cores baseada na proximidade (em dias)
-    if (days < 0) {
-        return 'bg-red-500 text-white font-black shadow-sm'; // Atrasado (Vermelho forte)
+    if (type === 'text') {
+        if (days < 5) return 'text-red-600';
+        if (days <= 10) return 'text-orange-600';
+        return 'text-slate-500';
     }
-    if (days === 0) {
-        return 'bg-red-600 text-white font-black animate-pulse'; // É HOJE!
-    }
-    if (days <= 3) {
-        return 'bg-orange-500 text-white font-bold shadow-sm'; // Urgente (Laranja)
-    }
-    if (days <= 7) {
-        return 'bg-amber-400 text-amber-950 font-bold'; // Atenção (Amarelo/Âmbar)
-    }
-    if (days <= 15) {
-        return 'bg-blue-100 text-blue-700 font-semibold border border-blue-200'; // Planejado (Azul claro)
+
+    // < 5 dias: Vermelho
+    if (days < 5) {
+        return 'bg-red-500 text-white font-bold shadow-sm';
     }
     
-    return 'bg-slate-100 text-slate-600 font-medium border border-slate-200'; // Tranquilo (Cinza)
+    // 5 a 10 dias: Laranja
+    if (days <= 10) {
+        return 'bg-orange-500 text-white font-bold shadow-sm';
+    }
+    
+    // > 10 dias: Cinza
+    return 'bg-slate-100 text-slate-600 font-medium border border-slate-200';
 };
 
 export const formatDisplayDate = (dateStr: string) => {
