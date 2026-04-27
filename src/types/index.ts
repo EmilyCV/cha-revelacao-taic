@@ -23,3 +23,8 @@ export interface Task {
   budget?: number; // Orçamento total planejado para a missão
   spent?: number;  // Valor gasto total (pode ser a soma das subtasks)
 }
+
+export interface Guest {
+  id: string;
+  name: string;
+}
