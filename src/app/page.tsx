@@ -327,34 +327,40 @@ export default function Home() {
 
             <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
                 {activeTab === 'tasks' ? (
-                    <div className="flex flex-col md:flex-row gap-6 h-full">
-                        <div className="flex-1 flex flex-col gap-4">
+                    <div className="flex flex-col md:flex-row gap-6 h-full relative">
+                        {/* No mobile, esconde a lista se houver uma tarefa selecionada para dar foco total ao detalhe */}
+                        <div className={`flex-1 flex flex-col gap-4 ${selectedTask ? 'hidden md:flex' : 'flex'}`}>
                             <TaskBoard tasks={tasks} newTask={newTask} setNewTask={setNewTask} addTask={addTask} toggleTask={toggleTask} selectedTask={selectedTask} setSelectedTask={setSelectedTask} />
                         </div>
-                        <div className={`md:w-[400px] lg:w-[450px] shrink-0 transition-all duration-300 ease-in-out ${selectedTask ? 'block' : 'hidden md:block opacity-50 pointer-events-none'}`}>
-                            <TaskDetails
-                                selectedTask={selectedTask}
-                                setSelectedTask={setSelectedTask}
-                                deleteTask={deleteTask}
-                                updateTaskDeadline={updateTaskDeadline}
-                                updateTaskCategory={updateTaskCategory}
+
+                        {/* Detalhes da Missão - Agora se comporta como um Drawer/Modal no mobile */}
+                        <div className={`
+                            ${selectedTask ? 'fixed inset-0 z-50 bg-white' : 'hidden md:block opacity-50 pointer-events-none'} 
+                            md:relative md:inset-auto md:z-0 md:bg-transparent
+                            md:w-[400px] lg:w-[450px] shrink-0 transition-all duration-300 ease-in-out
+                        `}>
+                            <TaskDetails 
+                                selectedTask={selectedTask} 
+                                setSelectedTask={setSelectedTask} 
+                                deleteTask={deleteTask} 
+                                updateTaskDeadline={updateTaskDeadline} 
+                                updateTaskCategory={updateTaskCategory} 
                                 updateTaskSpent={updateTaskSpent}
                                 updateSubtaskSpent={updateSubtaskSpent}
-                                newSubtask={newSubtask}
-                                setNewSubtask={setNewSubtask}
-                                addSubtask={addSubtask}
-                                toggleSubtask={toggleSubtask}
-                                deleteSubtask={deleteSubtask}
-                                newComment={newComment}
-                                setNewComment={setNewComment}
-                                addComment={addComment}
-                                deleteComment={deleteComment}
-                                currentUser={currentUser}
+                                newSubtask={newSubtask} 
+                                setNewSubtask={setNewSubtask} 
+                                addSubtask={addSubtask} 
+                                toggleSubtask={toggleSubtask} 
+                                deleteSubtask={deleteSubtask} 
+                                newComment={newComment} 
+                                setNewComment={setNewComment} 
+                                addComment={addComment} 
+                                deleteComment={deleteComment} 
+                                currentUser={currentUser} 
                             />
                         </div>
                     </div>
-                ) : (
-                    <GuestList
+                ) : (                    <GuestList
                         guests={guests}
                         addGuest={addGuest}
                         updateGuestName={updateGuestName}

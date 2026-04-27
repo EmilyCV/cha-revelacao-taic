@@ -5,7 +5,7 @@ import { getDeadlineColor, formatCurrency, parseCurrencyInput } from "@/lib/util
 import {
     Clock, Trash2, X, ListTodo, CheckSquare,
     MessageSquare, SendHorizontal, Gamepad2, Tag,
-    Wallet, ArrowRight
+    Wallet, ArrowLeft
 } from 'lucide-react';
 
 interface TaskDetailsProps {
@@ -28,7 +28,8 @@ interface TaskDetailsProps {
     currentUser: string;
 }
 
-const CATEGORY_SUGGESTIONS = ["Geral", "Base", "Lugar", "Tema", "RSVP", "Comida", "Decoração"];
+const CATEGORY_SUGGESTIONS = ["Geral", "Lugar", "Tema", "Decoração", "Comida"];
+
 
 export default function TaskDetails({
     selectedTask,
@@ -53,7 +54,7 @@ export default function TaskDetails({
         return (
             <div className="bg-slate-100/50 rounded-xl border border-slate-200 border-dashed h-full flex flex-col items-center justify-center p-8 text-center">
                 <Gamepad2 className="w-12 h-12 text-slate-300 mb-4" />
-                <p className="text-slate-500 font-medium">Selecione uma missão na lista para ver os detalhes, adicionar sub-etapas e deixar notas.</p>
+                <p className="text-slate-500 font-medium text-sm">Selecione uma missão na lista para ver detalhes e gerenciar sub-etapas.</p>
             </div>
         );
     }
@@ -71,14 +72,25 @@ export default function TaskDetails({
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-lg border border-blue-100 h-[70vh] flex flex-col overflow-hidden sticky top-6">
-            <div className="p-4 border-b border-slate-100 bg-gradient-to-br from-blue-50 to-white flex justify-between items-start">
+        <div className="bg-white md:rounded-xl shadow-lg border-x md:border border-blue-100 h-full flex flex-col overflow-hidden md:sticky md:top-6 animate-in slide-in-from-right md:slide-in-from-transparent duration-300">
+            {/* Cabeçalho do Detalhe */}
+            <div className="p-4 border-b border-slate-100 bg-gradient-to-br from-blue-50/50 to-white flex justify-between items-start sticky top-0 z-10 backdrop-blur-md">
                 <div className="flex-1 min-w-0">
-                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1 block">Detalhes da Missão</span>
-                    <h3 className="font-bold text-slate-800 leading-tight break-words">{selectedTask.text}</h3>
-                    
-                    <div className="flex flex-wrap items-center gap-3 mt-3">
-                        <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1 rounded border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                        {/* Botão de Voltar Visível Apenas no Mobile */}
+                        <button
+                            onClick={() => setSelectedTask(null)}
+                            className="md:hidden p-2 -ml-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Gestão da Missão</span>
+                    </div>
+
+                    <h3 className="font-black text-slate-800 leading-tight break-words text-lg">{selectedTask.text}</h3>
+
+                    <div className="flex flex-wrap items-center gap-3 mt-4">
+                        <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-sm">
                             <Clock className={`w-3.5 h-3.5 ${getDeadlineColor(selectedTask.deadline, 'text')}`} />
                             <input
                                 type="date"
@@ -88,7 +100,7 @@ export default function TaskDetails({
                             />
                         </div>
 
-                        <div className="flex items-center gap-1.5 bg-white/60 px-2 py-1 rounded border border-slate-200 shadow-sm group">
+                        <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-sm group">
                             <Tag className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" />
                             <input
                                 type="text"
@@ -99,152 +111,160 @@ export default function TaskDetails({
                             />
                         </div>
                     </div>
+
+                    {/* Sugestões de Categoria - Novo UI de Toque Rápido */}
+                    <div className="flex gap-1.5 mt-4 overflow-x-auto no-scrollbar pb-1">
+                        {CATEGORY_SUGGESTIONS.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => updateTaskCategory(selectedTask.id, cat)}
+                                className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition-all whitespace-nowrap ${
+                                    selectedTask.category === cat
+                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-100'
+                                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                }`}
+                            >
+                                {cat}
+                            </button>
+                        ))}
+                    </div>
                 </div>
-                <div className="flex gap-1 ml-2">
-                    <button onClick={() => deleteTask(selectedTask.id)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors" title="Deletar Missão">
-                        <Trash2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={() => setSelectedTask(null)} className="p-1.5 text-slate-400 hover:bg-slate-100 rounded-md md:hidden transition-colors">
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
+
+                <button
+                    onClick={() => { if (confirm('Excluir esta missão permanentemente?')) deleteTask(selectedTask.id) }}
+                    className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                >
+                    <Trash2 className="w-5 h-5" />
+                </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/30">
-                {/* Seção de Gasto da Missão */}
-                <section className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="flex-1 overflow-y-auto p-4 space-y-8 bg-slate-50/20 pb-20 md:pb-4">
+
+                {/* Seção Financeira */}
+                <section className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
+                            <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shadow-inner">
                                 <Wallet className="w-4 h-4" />
                             </div>
-                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                Gasto da Missão
-                            </h4>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.15em]">Gasto Total</h4>
                         </div>
                         {hasSubtaskCosts && (
-                            <div className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1 rounded-full shadow-md shadow-blue-200">
-                                <span className="text-[9px] font-black uppercase tracking-tighter">Soma Automática</span>
+                            <div className="bg-blue-600 text-white px-3 py-1 rounded-full shadow-lg shadow-blue-100">
+                                <span className="text-[9px] font-black uppercase tracking-tighter">Automático</span>
                             </div>
                         )}
                     </div>
-                    
-                    <div className="relative group">
-                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">R$</div>
-                        <input 
+
+                    <div className="relative">
+                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold text-sm">R$</div>
+                        <input
                             type="text"
                             inputMode="numeric"
                             value={formatCurrency(selectedTask.spent)}
                             readOnly={hasSubtaskCosts}
                             onChange={handleMainSpentChange}
-                            className={`w-full bg-slate-50 border-2 rounded-xl py-3 pl-11 pr-4 text-2xl font-black transition-all outline-none ${
-                                hasSubtaskCosts 
-                                ? 'border-blue-100 text-blue-600 cursor-not-allowed' 
-                                : 'border-slate-100 text-slate-700 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100'
-                            }`}
-                            placeholder="0,00"
+                            className={`w-full bg-slate-50 border-2 rounded-2xl py-4 pl-12 pr-4 text-3xl font-black transition-all outline-none ${hasSubtaskCosts
+                                    ? 'border-blue-50 text-blue-600 cursor-not-allowed'
+                                    : 'border-slate-50 text-slate-700 focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-100/50'
+                                }`}
                         />
                     </div>
-                    {hasSubtaskCosts && (
-                        <p className="text-[10px] text-blue-400 mt-2.5 font-bold flex items-center gap-1">
-                            <ArrowRight className="w-3 h-3" /> Valor consolidado das sub-etapas
-                        </p>
-                    )}
                 </section>
 
+                {/* Sub-etapas */}
                 <section>
-                    <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                        <ListTodo className="w-4 h-4 text-blue-500" /> Sub-etapas
-                    </h4>
+                    <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-black text-slate-800 flex items-center gap-2">
+                            <ListTodo className="w-4 h-4 text-blue-500" /> Sub-etapas
+                        </h4>
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                            {selectedTask.subtasks?.length || 0} itens
+                        </span>
+                    </div>
 
-                    <div className="space-y-3 mb-4">
+                    <div className="space-y-3 mb-6">
                         {selectedTask.subtasks?.map(sub => (
-                            <div key={sub.id} className="bg-white p-3 rounded-xl border border-slate-100 hover:border-blue-200 transition-all shadow-sm group">
-                                <div className="flex items-center justify-between mb-2">
+                            <div key={sub.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm group">
+                                <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-start gap-3 flex-1 min-w-0">
-                                        <button onClick={() => toggleSubtask(selectedTask.id, sub.id)} className="mt-0.5">
+                                        <button onClick={() => toggleSubtask(selectedTask.id, sub.id)} className="mt-0.5 transition-transform active:scale-90">
                                             {sub.completed
-                                                ? <CheckSquare className="w-4 h-4 text-green-500" />
-                                                : <div className="w-4 h-4 border-2 border-slate-300 rounded-[3px] group-hover:border-blue-400 transition-colors" />
+                                                ? <CheckSquare className="w-5 h-5 text-green-500" />
+                                                : <div className="w-5 h-5 border-2 border-slate-200 rounded-lg group-hover:border-blue-400 transition-colors" />
                                             }
                                         </button>
-                                        <span className={`text-sm font-medium break-words ${sub.completed ? 'line-through text-slate-400' : 'text-slate-600'}`}>
+                                        <span className={`text-sm font-bold break-words leading-tight ${sub.completed ? 'line-through text-slate-300' : 'text-slate-600'}`}>
                                             {sub.text}
                                         </span>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => deleteSubtask(selectedTask.id, sub.id)}
-                                        className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                        className="p-2 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
                                     >
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
-                                
-                                <div className="flex items-center gap-2 ml-7 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100 w-fit focus-within:border-blue-300 transition-all">
+
+                                <div className="flex items-center gap-2 ml-8 bg-slate-50 px-3 py-2 rounded-xl border border-slate-50 w-fit focus-within:border-blue-200 transition-all">
                                     <span className="text-[10px] font-black text-slate-400 uppercase">R$</span>
-                                    <input 
+                                    <input
                                         type="text"
                                         inputMode="numeric"
                                         value={formatCurrency(sub.spent)}
                                         onChange={(e) => handleSubtaskSpentChange(sub.id, e.target.value)}
-                                        className="text-[12px] font-black text-blue-600 bg-transparent border-none p-0 w-24 focus:ring-0"
+                                        className="text-sm font-black text-blue-600 bg-transparent border-none p-0 w-24 focus:ring-0"
                                     />
                                 </div>
                             </div>
                         ))}
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 p-1 bg-white rounded-2xl border border-slate-200 shadow-sm focus-within:ring-2 focus-within:ring-blue-100 transition-all">
                         <input
                             type="text" value={newSubtask} onChange={(e) => setNewSubtask(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && addSubtask(selectedTask.id)}
-                            placeholder="Adicionar sub-etapa..."
-                            className="flex-1 text-xs border border-slate-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                            placeholder="Nova sub-etapa..."
+                            className="flex-1 text-sm border-none bg-transparent px-4 py-3 focus:outline-none"
                         />
-                        <button onClick={() => addSubtask(selectedTask.id)} className="px-4 py-2.5 bg-slate-900 text-white rounded-lg hover:bg-black text-xs font-bold transition-all active:scale-95">
+                        <button onClick={() => addSubtask(selectedTask.id)} className="px-5 py-3 bg-slate-900 text-white rounded-xl hover:bg-black font-black text-xs transition-all active:scale-95">
                             Add
                         </button>
                     </div>
                 </section>
 
+                {/* Comentários */}
                 <section>
-                    <h4 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
-                        <MessageSquare className="w-4 h-4 text-amber-500" /> Notas & Comentários
+                    <h4 className="text-sm font-black text-slate-800 flex items-center gap-2 mb-4">
+                        <MessageSquare className="w-4 h-4 text-amber-500" /> Notas
                     </h4>
 
-                    <div className="space-y-3 mb-4">
-                        {selectedTask.comments?.length === 0 ? (
-                            <p className="text-xs text-slate-400 italic">Nenhum comentário ainda.</p>
-                        ) : (
-                            selectedTask.comments?.map(comment => (
-                                <div key={comment.id} className={`group bg-white p-3 rounded-lg border border-slate-100 shadow-sm relative ${comment.author === currentUser ? 'border-l-2 border-l-blue-400' : 'border-l-2 border-l-pink-400'}`}>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-xs font-bold text-slate-700">{comment.author}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] text-slate-400">{comment.date}</span>
-                                            <button 
-                                                onClick={() => deleteComment(selectedTask.id, comment.id)}
-                                                className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                            >
-                                                <Trash2 className="w-3 h-3" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <p className="text-xs text-slate-600">{comment.text}</p>
+                    <div className="space-y-3 mb-6">
+                        {selectedTask.comments?.map(comment => (
+                            <div key={comment.id} className={`group bg-white p-4 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden ${comment.author === currentUser ? 'border-l-4 border-l-blue-500' : 'border-l-4 border-l-pink-500'}`}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{comment.author}</span>
+                                    <button
+                                        onClick={() => deleteComment(selectedTask.id, comment.id)}
+                                        className="p-1 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
                                 </div>
-                            ))
-                        )}
+                                <p className="text-xs font-bold text-slate-700 leading-relaxed">{comment.text}</p>
+                            </div>
+                        ))}
                     </div>
 
-                    <div className="flex gap-2 items-start bg-white p-1 rounded-lg border border-slate-200 focus-within:ring-2 focus-within:ring-blue-500 shadow-sm transition-all">
+                    <div className="flex gap-2 items-end bg-white p-2 rounded-2xl border border-slate-200 shadow-sm focus-within:ring-4 focus-within:ring-blue-50/50 transition-all">
                         <textarea
                             value={newComment} onChange={(e) => setNewComment(e.target.value)}
-                            placeholder={`Escreva algo como ${currentUser}...`}
-                            className="flex-1 text-xs px-2 py-2 focus:outline-none resize-none h-12 bg-transparent"
+                            placeholder="Escrever nota..."
+                            className="flex-1 text-sm px-3 py-2 focus:outline-none resize-none h-14 bg-transparent font-medium"
                             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addComment(selectedTask.id); } }}
                         />
-                        <button onClick={() => addComment(selectedTask.id)} className="mt-1 mr-1 p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors">
-                            <SendHorizontal className="w-4 h-4" />
+                        <button onClick={() => addComment(selectedTask.id)} className="p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 active:scale-90">
+                            <SendHorizontal className="w-5 h-5" />
                         </button>
                     </div>
                 </section>
