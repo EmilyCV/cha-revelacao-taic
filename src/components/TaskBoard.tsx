@@ -4,7 +4,7 @@ import { Task } from "@/types";
 import { getDeadlineColor, formatDisplayDate } from "@/lib/utils";
 import {
     CheckCircle2, Circle, Clock, MessageSquare,
-    ChevronRight, Plus, Star, CheckSquare
+    ChevronRight, Plus, Star, CheckSquare, DollarSign
 } from 'lucide-react';
 
 interface TaskBoardProps {
@@ -95,6 +95,13 @@ export default function TaskBoard({
                                                 <MessageSquare className="w-3 h-3" /> {task.comments.length}
                                             </span>
                                         )}
+
+                                        {(task.spent || 0) > 0 && (
+                                            <span className="text-[10px] flex items-center gap-1 font-bold px-2 py-0.5 rounded bg-green-100 text-green-700">
+                                                <DollarSign className="w-3 h-3" /> R$ {task.spent?.toFixed(2)}
+                                            </span>
+                                        )}
+
                                         <span className={`text-[10px] flex items-center gap-1 px-2 py-0.5 rounded ${getDeadlineColor(task.deadline)}`}>
                                             <Clock className="w-3 h-3" />
                                             {formatDisplayDate(task.deadline)}

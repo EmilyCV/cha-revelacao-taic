@@ -1,8 +1,8 @@
 "use client";
 
-import { AlertCircle } from "lucide-react";
 import { Task } from "@/types";
 import { daysUntil } from "@/lib/utils";
+import { Calendar, Wallet, CheckCircle2 } from "lucide-react";
 
 interface DashboardProps {
     tasks: Task[];
@@ -16,35 +16,46 @@ export default function DashboardMetrics({ tasks, eventDate }: DashboardProps) {
         return Math.round((completed / tasks.length) * 100);
     };
 
+    const totalSpent = tasks.reduce((acc, t) => acc + (t.spent || 0), 0);
+
     return (
-        <div className="bg-white border-b border-slate-200 shadow-sm">
-            <div className="max-w-6xl mx-auto px-4 py-3 grid grid-cols-2 md:grid-cols-4 gap-4 divide-x divide-slate-100">
-                <div className="px-4">
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Status do Evento</p>
-                    <div className="flex items-end gap-2">
-                        <span className="text-2xl font-black text-slate-800">{calculateProgress()}%</span>
-                        <span className="text-sm text-slate-400 mb-1">concluído</span>
-                    </div>
-                    <div className="w-full bg-slate-100 h-1.5 rounded-full mt-2 overflow-hidden">
-                        <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${calculateProgress()}%` }} />
+        <div className="bg-white border-b border-slate-200 shadow-sm sticky top-0 md:relative z-20">
+            <div className="max-w-6xl mx-auto px-4 py-3 flex md:grid md:grid-cols-3 gap-4 overflow-x-auto no-scrollbar md:divide-x md:divide-slate-100">
+                
+                {/* Progresso - Compacto no Mobile */}
+                <div className="min-w-[140px] md:min-w-0 md:px-4 shrink-0">
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-green-500" /> Progresso
+                    </p>
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-xl font-black text-slate-800">{calculateProgress()}%</span>
+                        <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden min-w-[40px]">
+                            <div className="bg-green-500 h-full transition-all duration-500" style={{ width: `${calculateProgress()}%` }} />
+                        </div>
                     </div>
                 </div>
-                <div className="px-4">
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Contagem Regressiva</p>
-                    <p className="text-2xl font-black text-blue-600 flex items-center gap-2">
-                        {daysUntil(eventDate)} <span className="text-sm font-medium text-slate-400">dias</span>
+
+                {/* Countdown */}
+                <div className="min-w-[120px] md:min-w-0 md:px-4 shrink-0">
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-blue-500" /> Faltam
+                    </p>
+                    <p className="text-xl font-black text-blue-600 flex items-baseline gap-1">
+                        {daysUntil(eventDate)} <span className="text-[10px] font-bold text-slate-400 uppercase">dias</span>
                     </p>
                 </div>
-                <div className="px-4 hidden md:block">
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Tarefas Ativas</p>
-                    <p className="text-2xl font-black text-slate-800">{tasks.filter(t => !t.completed).length}</p>
-                </div>
-                <div className="px-4 hidden md:block">
-                    <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Avisos</p>
-                    <p className="text-sm font-medium text-amber-600 flex items-center gap-1 mt-2">
-                        <AlertCircle className="w-4 h-4" /> RSVP pendente
+
+                {/* Financeiro */}
+                <div className="min-w-[150px] md:min-w-0 md:px-4 shrink-0">
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                        <Wallet className="w-3 h-3 text-amber-500" /> Investido
+                    </p>
+                    <p className="text-xl font-black text-slate-800 flex items-baseline gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">R$</span> 
+                        {totalSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                 </div>
+
             </div>
         </div>
     );

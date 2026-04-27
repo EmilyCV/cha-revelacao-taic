@@ -5,11 +5,12 @@ import Header from '@/components/Header';
 import DashboardMetrics from '@/components/DashboardMetrics';
 import TaskBoard from '@/components/TaskBoard';
 import TaskDetails from '@/components/TaskDetails';
-import { Task } from '@/types';
-import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
+import GuestList from '@/components/GuestList';
+import { Task, Guest } from '@/types';
+import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, getDoc, writeBatch } from 'firebase/firestore';
 import { signInWithPopup, onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { db, auth, googleProvider } from '@/lib/firebase';
-import { Gamepad2, AlertCircle, LogIn } from 'lucide-react';
+import { Gamepad2, AlertCircle, LogIn, Users, LayoutDashboard } from 'lucide-react';
 
 export default function Home() {
     const [user, setUser] = useState<User | null>(null);
@@ -18,7 +19,9 @@ export default function Home() {
     const [authError, setAuthError] = useState('');
     const [isMounted, setIsMounted] = useState(false);
 
+    const [activeTab, setActiveTab] = useState<'tasks' | 'guests'>('tasks');
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [guests, setGuests] = useState<Guest[]>([]);
     const [eventDate, setEventDate] = useState('2026-06-20');
     const [newTask, setNewTask] = useState('');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -28,7 +31,7 @@ export default function Home() {
 
     useEffect(() => {
         setIsMounted(true);
-        
+
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
                 const email = currentUser.email?.toLowerCase();
@@ -45,13 +48,14 @@ export default function Home() {
                             setAuthError('Este e-mail não está na lista de organizadores autorizados.');
                             setUser(null);
                         }
-                    } catch (e: any) {
+                    } catch (e: unknown) {
                         console.error("Erro detalhado do Firebase:", e);
                         await signOut(auth);
-                        if (e.code === 'permission-denied') {
+                        const error = e as { code?: string; message?: string };
+                        if (error.code === 'permission-denied') {
                             setAuthError('O banco de dados do Firebase recusou seu acesso. Verifique se as "Rules" foram publicadas.');
                         } else {
-                            setAuthError(`Erro técnico: ${e.message}`);
+                            setAuthError(`Erro técnico: ${error.message || 'Desconhecido'}`);
                         }
                         setUser(null);
                     }
@@ -99,6 +103,15 @@ export default function Home() {
             setTasks(tasksData);
         });
 
+        const qGuests = query(collection(db, 'guests'));
+        const unsubscribeGuests = onSnapshot(qGuests, (snapshot) => {
+            const guestsData = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Guest[];
+            setGuests(guestsData);
+        });
+
         const unsubSettings = onSnapshot(doc(db, 'settings', 'general'), (docSnap) => {
             if (docSnap.exists() && docSnap.data().eventDate) {
                 setEventDate(docSnap.data().eventDate);
@@ -107,12 +120,13 @@ export default function Home() {
 
         return () => {
             unsubscribeTasks();
+            unsubscribeGuests();
             unsubSettings();
         };
     }, [user]);
 
     // ... (restante das funções addTask, toggleTask, etc permanecem iguais)
-    
+
     useEffect(() => {
         if (selectedTask) {
             const updated = tasks.find(t => t.id === selectedTask.id);
@@ -143,12 +157,29 @@ export default function Home() {
         if (selectedTask?.id === id) setSelectedTask(null);
     };
 
+    const updateTaskSpent = async (taskId: string, newSpent: number) => {
+        await updateDoc(doc(db, 'tasks', taskId), { spent: newSpent });
+    };
+
+    const updateSubtaskSpent = async (taskId: string, subId: string, newSpent: number) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            const updatedSubs = task.subtasks.map(s => s.id === subId ? { ...s, spent: newSpent } : s);
+            const totalSpent = updatedSubs.reduce((acc, curr) => acc + (curr.spent || 0), 0);
+            await updateDoc(doc(db, 'tasks', taskId), {
+                subtasks: updatedSubs,
+                spent: totalSpent
+            });
+        }
+    };
+
     const addSubtask = async (taskId: string) => {
         if (!newSubtask.trim()) return;
         const task = tasks.find(t => t.id === taskId);
         if (task) {
-            const newSub = { id: Date.now().toString(), text: newSubtask, completed: false };
-            await updateDoc(doc(db, 'tasks', taskId), { subtasks: [...task.subtasks, newSub] });
+            const newSub = { id: Date.now().toString(), text: newSubtask, completed: false, spent: 0 };
+            const updatedSubs = [...task.subtasks, newSub];
+            await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubs });
             setNewSubtask('');
         }
     };
@@ -165,7 +196,12 @@ export default function Home() {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
             const updatedSubs = task.subtasks.filter(s => s.id !== subId);
-            await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubs });
+            // Recalcula o total ao deletar
+            const totalSpent = updatedSubs.reduce((acc, curr) => acc + (curr.spent || 0), 0);
+            await updateDoc(doc(db, 'tasks', taskId), {
+                subtasks: updatedSubs,
+                spent: totalSpent
+            });
         }
     };
 
@@ -195,6 +231,27 @@ export default function Home() {
         await updateDoc(doc(db, 'tasks', taskId), { category: newCategory });
     };
 
+    // --- Guest List Actions ---
+    const addGuest = async (name: string) => {
+        await addDoc(collection(db, 'guests'), { name });
+    };
+
+    const updateGuestName = async (id: string, newName: string) => {
+        await updateDoc(doc(db, 'guests', id), { name: newName });
+    };
+
+    const deleteGuest = async (id: string) => {
+        await deleteDoc(doc(db, 'guests', id));
+    };
+
+    const deleteMultipleGuests = async (ids: string[]) => {
+        const batch = writeBatch(db);
+        ids.forEach(id => {
+            batch.delete(doc(db, 'guests', id));
+        });
+        await batch.commit();
+    };
+
     if (!isMounted) return <div className="min-h-screen bg-slate-50" />;
 
     if (authLoading || isLoggingOut) {
@@ -215,7 +272,7 @@ export default function Home() {
                     </div>
                     <h1 className="text-3xl font-black text-slate-800 mb-2">Acesso Restrito</h1>
                     <p className="text-slate-500 mb-8 text-sm px-4">Utilize um e-mail autorizado para gerenciar o Chá Revelação.</p>
-                    
+
                     {authError && (
                         <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded flex items-start gap-3 text-left">
                             <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
@@ -223,7 +280,7 @@ export default function Home() {
                         </div>
                     )}
 
-                    <button 
+                    <button
                         onClick={handleLogin}
                         className="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02]"
                     >
@@ -237,21 +294,82 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
-            <Header 
-                currentUser={currentUser} 
+            <Header
+                currentUser={currentUser}
                 eventDate={eventDate}
                 setEventDate={handleSetEventDate}
                 onLogout={handleLogout}
             />
             <DashboardMetrics tasks={tasks} eventDate={eventDate} />
-            <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
-                <div className="flex-1 flex flex-col gap-4">
-                    <TaskBoard tasks={tasks} newTask={newTask} setNewTask={setNewTask} addTask={addTask} toggleTask={toggleTask} selectedTask={selectedTask} setSelectedTask={setSelectedTask} />
+
+            <div className="w-full max-w-6xl mx-auto px-4 mt-6">
+                <div className="flex bg-slate-200/50 p-1 rounded-2xl w-fit">
+                    <button
+                        onClick={() => setActiveTab('tasks')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'tasks'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        <LayoutDashboard className="w-4 h-4" /> Missões
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('guests')}
+                        className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-black transition-all ${activeTab === 'guests'
+                                ? 'bg-white text-blue-600 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                    >
+                        <Users className="w-4 h-4" /> Convidados
+                    </button>
                 </div>
-                <div className={`md:w-[400px] lg:w-[450px] shrink-0 transition-all duration-300 ease-in-out ${selectedTask ? 'block' : 'hidden md:block opacity-50 pointer-events-none'}`}>
-                    <TaskDetails selectedTask={selectedTask} setSelectedTask={setSelectedTask} deleteTask={deleteTask} updateTaskDeadline={updateTaskDeadline} updateTaskCategory={updateTaskCategory} newSubtask={newSubtask} setNewSubtask={setNewSubtask} addSubtask={addSubtask} toggleSubtask={toggleSubtask} deleteSubtask={deleteSubtask} newComment={newComment} setNewComment={setNewComment} addComment={addComment} deleteComment={deleteComment} currentUser={currentUser} />
-                </div>
+            </div>
+
+            <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6">
+                {activeTab === 'tasks' ? (
+                    <div className="flex flex-col md:flex-row gap-6 h-full relative">
+                        {/* No mobile, esconde a lista se houver uma tarefa selecionada para dar foco total ao detalhe */}
+                        <div className={`flex-1 flex flex-col gap-4 ${selectedTask ? 'hidden md:flex' : 'flex'}`}>
+                            <TaskBoard tasks={tasks} newTask={newTask} setNewTask={setNewTask} addTask={addTask} toggleTask={toggleTask} selectedTask={selectedTask} setSelectedTask={setSelectedTask} />
+                        </div>
+
+                        {/* Detalhes da Missão - Agora se comporta como um Drawer/Modal no mobile */}
+                        <div className={`
+                            ${selectedTask ? 'fixed inset-0 z-50 bg-white' : 'hidden md:block opacity-50 pointer-events-none'} 
+                            md:relative md:inset-auto md:z-0 md:bg-transparent
+                            md:w-[400px] lg:w-[450px] shrink-0 transition-all duration-300 ease-in-out
+                        `}>
+                            <TaskDetails 
+                                selectedTask={selectedTask} 
+                                setSelectedTask={setSelectedTask} 
+                                deleteTask={deleteTask} 
+                                updateTaskDeadline={updateTaskDeadline} 
+                                updateTaskCategory={updateTaskCategory} 
+                                updateTaskSpent={updateTaskSpent}
+                                updateSubtaskSpent={updateSubtaskSpent}
+                                newSubtask={newSubtask} 
+                                setNewSubtask={setNewSubtask} 
+                                addSubtask={addSubtask} 
+                                toggleSubtask={toggleSubtask} 
+                                deleteSubtask={deleteSubtask} 
+                                newComment={newComment} 
+                                setNewComment={setNewComment} 
+                                addComment={addComment} 
+                                deleteComment={deleteComment} 
+                                currentUser={currentUser} 
+                            />
+                        </div>
+                    </div>
+                ) : (                    <GuestList
+                        guests={guests}
+                        addGuest={addGuest}
+                        updateGuestName={updateGuestName}
+                        deleteGuest={deleteGuest}
+                        deleteMultipleGuests={deleteMultipleGuests}
+                    />
+                )}
             </main>
         </div>
     );
 }
+
