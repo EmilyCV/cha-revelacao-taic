@@ -6,21 +6,15 @@ import DashboardMetrics from '@/components/DashboardMetrics';
 import TaskBoard from '@/components/TaskBoard';
 import TaskDetails from '@/components/TaskDetails';
 import { Task } from '@/types';
-// Importações do Firebase
-import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, query, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc, getDoc } from 'firebase/firestore';
 import { signInWithPopup, onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { db, auth, googleProvider } from '@/lib/firebase';
 import { Gamepad2, AlertCircle, LogIn } from 'lucide-react';
 
-// Forçamos a leitura direta para depuração se necessário, mas mantemos o padrão
-const ALLOWED_EMAILS = [
-    process.env.NEXT_PUBLIC_ALLOWED_EMAIL_1,
-    process.env.NEXT_PUBLIC_ALLOWED_EMAIL_2
-].filter(Boolean).map(e => e?.toLowerCase());
-
 export default function Home() {
     const [user, setUser] = useState<User | null>(null);
     const [authLoading, setAuthLoading] = useState(true);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
     const [authError, setAuthError] = useState('');
     const [isMounted, setIsMounted] = useState(false);
 
@@ -28,33 +22,43 @@ export default function Home() {
     const [eventDate, setEventDate] = useState('2026-06-20');
     const [newTask, setNewTask] = useState('');
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-    const [currentUser, setCurrentUser] = useState('Emily');
+    const [currentUser, setCurrentUser] = useState('');
     const [newSubtask, setNewSubtask] = useState('');
     const [newComment, setNewComment] = useState('');
 
-    // --- Firebase: Autenticação ---
     useEffect(() => {
         setIsMounted(true);
         
-        // O onAuthStateChanged é assíncrono. Enquanto ele não responde, authLoading é true.
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            console.log("Auth State Changed:", currentUser?.email);
-            
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
                 const email = currentUser.email?.toLowerCase();
-                if (email && ALLOWED_EMAILS.includes(email)) {
-                    setUser(currentUser);
-                    if (email === process.env.NEXT_PUBLIC_ALLOWED_EMAIL_1?.toLowerCase()) setCurrentUser('Emily');
-                    else if (email === process.env.NEXT_PUBLIC_ALLOWED_EMAIL_2?.toLowerCase()) setCurrentUser('Daniela');
-                    setAuthError('');
-                } else {
-                    console.warn("Acesso negado para:", email);
-                    signOut(auth);
-                    setAuthError('Ops! Este e-mail não tem acesso ao painel.');
-                    setUser(null);
+                if (email) {
+                    // Verifica no banco se o usuário existe na coleção de autorizados
+                    try {
+                        const userDoc = await getDoc(doc(db, 'allowed_users', email));
+                        if (userDoc.exists()) {
+                            setUser(currentUser);
+                            setCurrentUser(userDoc.data().name || 'Organizador');
+                            setAuthError('');
+                        } else {
+                            await signOut(auth);
+                            setAuthError('Este e-mail não está na lista de organizadores autorizados.');
+                            setUser(null);
+                        }
+                    } catch (e: any) {
+                        console.error("Erro detalhado do Firebase:", e);
+                        await signOut(auth);
+                        if (e.code === 'permission-denied') {
+                            setAuthError('O banco de dados do Firebase recusou seu acesso. Verifique se as "Rules" foram publicadas.');
+                        } else {
+                            setAuthError(`Erro técnico: ${e.message}`);
+                        }
+                        setUser(null);
+                    }
                 }
             } else {
                 setUser(null);
+                setIsLoggingOut(false);
             }
             setAuthLoading(false);
         });
@@ -73,13 +77,12 @@ export default function Home() {
     };
 
     const handleLogout = async () => {
+        setIsLoggingOut(true);
         try {
             await signOut(auth);
-            setUser(null);
-            // Força o recarregamento para garantir limpeza de estado
-            window.location.reload();
         } catch (error) {
             console.error("Erro no logout:", error);
+            setIsLoggingOut(false);
         }
     };
 
@@ -108,7 +111,8 @@ export default function Home() {
         };
     }, [user]);
 
-    // Mantém o painel sincronizado
+    // ... (restante das funções addTask, toggleTask, etc permanecem iguais)
+    
     useEffect(() => {
         if (selectedTask) {
             const updated = tasks.find(t => t.id === selectedTask.id);
@@ -117,7 +121,6 @@ export default function Home() {
         }
     }, [tasks, selectedTask?.id]);
 
-    // --- Funções de Tarefa ---
     const handleSetEventDate = async (newDate: string) => {
         await setDoc(doc(db, 'settings', 'general'), { eventDate: newDate }, { merge: true });
     };
@@ -192,22 +195,17 @@ export default function Home() {
         await updateDoc(doc(db, 'tasks', taskId), { category: newCategory });
     };
 
-    // --- Lógica de Renderização ---
-    
-    // 1. Evita erro de hidratação
     if (!isMounted) return <div className="min-h-screen bg-slate-50" />;
 
-    // 2. Tela de carregamento enquanto verifica o Firebase
-    if (authLoading) {
+    if (authLoading || isLoggingOut) {
         return (
             <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
                 <div className="w-12 h-12 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mb-4"></div>
-                <p className="text-slate-500 font-medium animate-pulse">Protegendo o painel...</p>
+                <p className="text-slate-500 font-medium animate-pulse">Validando credenciais...</p>
             </div>
         );
     }
 
-    // 3. Se NÃO tem usuário, mostra OBRIGATORIAMENTE a tela de login
     if (!user) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center p-4">
@@ -215,8 +213,8 @@ export default function Home() {
                     <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6 rotate-3">
                         <Gamepad2 className="w-10 h-10" />
                     </div>
-                    <h1 className="text-3xl font-black text-slate-800 mb-2">Painel Restrito</h1>
-                    <p className="text-slate-500 mb-8 text-sm px-4">Este sistema contém informações confidenciais do Chá Revelação. Por favor, identifique-se.</p>
+                    <h1 className="text-3xl font-black text-slate-800 mb-2">Acesso Restrito</h1>
+                    <p className="text-slate-500 mb-8 text-sm px-4">Utilize um e-mail autorizado para gerenciar o Chá Revelação.</p>
                     
                     {authError && (
                         <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 text-sm rounded flex items-start gap-3 text-left">
@@ -227,19 +225,16 @@ export default function Home() {
 
                     <button 
                         onClick={handleLogin}
-                        className="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-95"
+                        className="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 px-6 rounded-2xl transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02]"
                     >
                         <LogIn className="w-6 h-6" />
                         Acessar com Google
                     </button>
-                    
-                    <p className="mt-8 text-[10px] text-slate-400 uppercase tracking-widest font-bold">Acesso seguro via Firebase Auth</p>
                 </div>
             </div>
         );
     }
 
-    // 4. Se tem usuário logado e autorizado, mostra o App
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-slate-800 flex flex-col">
             <Header 
@@ -249,7 +244,6 @@ export default function Home() {
                 onLogout={handleLogout}
             />
             <DashboardMetrics tasks={tasks} eventDate={eventDate} />
-
             <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-6 flex flex-col md:flex-row gap-6">
                 <div className="flex-1 flex flex-col gap-4">
                     <TaskBoard tasks={tasks} newTask={newTask} setNewTask={setNewTask} addTask={addTask} toggleTask={toggleTask} selectedTask={selectedTask} setSelectedTask={setSelectedTask} />

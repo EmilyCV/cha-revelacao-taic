@@ -11,9 +11,13 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
+// Inicialização segura para SSR
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
+
+// Configura o provedor para sempre pedir seleção de conta (ajuda no teste de login)
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export { app, db, auth, googleProvider };
