@@ -45,13 +45,14 @@ export default function Home() {
                             setAuthError('Este e-mail não está na lista de organizadores autorizados.');
                             setUser(null);
                         }
-                    } catch (e: any) {
+                    } catch (e: unknown) {
                         console.error("Erro detalhado do Firebase:", e);
                         await signOut(auth);
-                        if (e.code === 'permission-denied') {
+                        const error = e as { code?: string; message?: string };
+                        if (error.code === 'permission-denied') {
                             setAuthError('O banco de dados do Firebase recusou seu acesso. Verifique se as "Rules" foram publicadas.');
                         } else {
-                            setAuthError(`Erro técnico: ${e.message}`);
+                            setAuthError(`Erro técnico: ${error.message || 'Desconhecido'}`);
                         }
                         setUser(null);
                     }

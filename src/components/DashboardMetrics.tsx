@@ -16,6 +16,8 @@ export default function DashboardMetrics({ tasks, eventDate }: DashboardProps) {
         return Math.round((completed / tasks.length) * 100);
     };
 
+    const urgentTasksCount = tasks.filter(t => !t.completed && daysUntil(t.deadline) < 5).length;
+
     return (
         <div className="bg-white border-b border-slate-200 shadow-sm">
             <div className="max-w-6xl mx-auto px-4 py-3 grid grid-cols-2 md:grid-cols-4 gap-4 divide-x divide-slate-100">
@@ -41,9 +43,15 @@ export default function DashboardMetrics({ tasks, eventDate }: DashboardProps) {
                 </div>
                 <div className="px-4 hidden md:block">
                     <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Avisos</p>
-                    <p className="text-sm font-medium text-amber-600 flex items-center gap-1 mt-2">
-                        <AlertCircle className="w-4 h-4" /> RSVP pendente
-                    </p>
+                    {urgentTasksCount > 0 ? (
+                        <p className="text-sm font-medium text-red-600 flex items-center gap-1 mt-2">
+                            <AlertCircle className="w-4 h-4" /> {urgentTasksCount} tarefa(s) urgente(s)!
+                        </p>
+                    ) : (
+                        <p className="text-sm font-medium text-green-600 flex items-center gap-1 mt-2">
+                            Sem avisos no momento.
+                        </p>
+                    )}
                 </div>
             </div>
         </div>
