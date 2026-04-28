@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Task } from "@/types";
 import { getDeadlineColor, formatDisplayDate } from "@/lib/utils";
 import {
     CheckCircle2, Circle, Clock, MessageSquare,
-    ChevronRight, Plus, Star, CheckSquare, DollarSign
+    ChevronRight, Plus, Star, CheckSquare, DollarSign,
+    Filter
 } from 'lucide-react';
 
 interface TaskBoardProps {
@@ -17,6 +19,8 @@ interface TaskBoardProps {
     setSelectedTask: (task: Task) => void;
 }
 
+type FilterType = 'all' | 'open' | 'closed';
+
 export default function TaskBoard({
     tasks,
     newTask,
@@ -26,9 +30,20 @@ export default function TaskBoard({
     selectedTask,
     setSelectedTask
 }: TaskBoardProps) {
+    const [filter, setFilter] = useState<FilterType>('all');
+
+    const filteredTasks = tasks.filter(task => {
+        if (filter === 'open') return !task.completed;
+        if (filter === 'closed') return task.completed;
+        return true;
+    });
+
+    const openCount = tasks.filter(t => !t.completed).length;
+    const closedCount = tasks.filter(t => t.completed).length;
+
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-full">
-            <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col max-h-[calc(100vh-280px)] md:max-h-[700px]">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-4 shrink-0">
                 <form onSubmit={addTask} className="flex gap-2">
                     <input
                         type="text"
@@ -41,16 +56,47 @@ export default function TaskBoard({
                         <Plus className="w-4 h-4" /> Adicionar
                     </button>
                 </form>
+
+                <div className="flex items-center gap-1 bg-slate-200/50 p-1 rounded-xl w-full">
+                    <button
+                        onClick={() => setFilter('all')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black transition-all ${
+                            filter === 'all' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        Todas <span className="bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">{tasks.length}</span>
+                    </button>
+                    <button
+                        onClick={() => setFilter('open')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black transition-all ${
+                            filter === 'open' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        Em Aberto <span className="bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded text-[10px]">{openCount}</span>
+                    </button>
+                    <button
+                        onClick={() => setFilter('closed')}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-black transition-all ${
+                            filter === 'closed' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                    >
+                        Concluídas <span className="bg-green-50 text-green-600 px-1.5 py-0.5 rounded text-[10px]">{closedCount}</span>
+                    </button>
+                </div>
             </div>
 
-            <div className="divide-y divide-slate-100 overflow-y-auto max-h-[60vh]">
-                {tasks.length === 0 ? (
+            <div className="divide-y divide-slate-100 overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-slate-200">
+                {filteredTasks.length === 0 ? (
                     <div className="p-8 text-center text-slate-400">
                         <Star className="w-12 h-12 mx-auto mb-3 text-slate-200" />
-                        <p>O reino está vazio. Adicione sua primeira missão!</p>
+                        <p>
+                            {filter === 'open' ? 'Nenhuma missão em aberto no momento!' : 
+                             filter === 'closed' ? 'Nenhuma missão foi concluída ainda.' :
+                             'O reino está vazio. Adicione sua primeira missão!'}
+                        </p>
                     </div>
                 ) : (
-                    tasks.map((task) => {
+                    filteredTasks.map((task) => {
                         const isSelected = selectedTask?.id === task.id;
                         const totalSubs = task.subtasks?.length || 0;
                         const completedSubs = task.subtasks?.filter(s => s.completed).length || 0;
