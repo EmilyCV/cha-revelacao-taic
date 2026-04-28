@@ -1,21 +1,22 @@
-"use client";
-
+import { useState, useEffect } from "react";
 import { Task } from "@/types";
 import { getDeadlineColor, formatCurrency, parseCurrencyInput } from "@/lib/utils";
 import {
     Clock, Trash2, X, ListTodo, CheckSquare,
     MessageSquare, SendHorizontal, Gamepad2, Tag,
-    Wallet, ArrowLeft
+    Wallet, ArrowLeft, Edit2, Check
 } from 'lucide-react';
 
 interface TaskDetailsProps {
     selectedTask: Task | null;
     setSelectedTask: (task: Task | null) => void;
     deleteTask: (id: string) => void;
+    updateTaskText: (taskId: string, newText: string) => void;
     updateTaskDeadline: (taskId: string, newDate: string) => void;
     updateTaskCategory: (taskId: string, newCategory: string) => void;
     updateTaskSpent: (taskId: string, newSpent: number) => void;
     updateSubtaskSpent: (taskId: string, subId: string, newSpent: number) => void;
+    updateSubtaskText: (taskId: string, subId: string, newText: string) => void;
     newSubtask: string;
     setNewSubtask: (val: string) => void;
     addSubtask: (taskId: string) => void;
@@ -35,10 +36,12 @@ export default function TaskDetails({
     selectedTask,
     setSelectedTask,
     deleteTask,
+    updateTaskText,
     updateTaskDeadline,
     updateTaskCategory,
     updateTaskSpent,
     updateSubtaskSpent,
+    updateSubtaskText,
     newSubtask,
     setNewSubtask,
     addSubtask,
@@ -50,6 +53,25 @@ export default function TaskDetails({
     deleteComment,
     currentUser
 }: TaskDetailsProps) {
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editingValue, setEditingValue] = useState("");
+
+    const startEditing = (id: string, value: string) => {
+        setEditingId(id);
+        setEditingValue(value);
+    };
+
+    const saveEditing = () => {
+        if (!selectedTask || !editingId) return;
+
+        if (editingId === 'main-task') {
+            updateTaskText(selectedTask.id, editingValue);
+        } else {
+            updateSubtaskText(selectedTask.id, editingId, editingValue);
+        }
+        setEditingId(null);
+    };
+
     if (!selectedTask) {
         return (
             <div className="bg-slate-100/50 rounded-xl border border-slate-200 border-dashed h-full flex flex-col items-center justify-center p-8 text-center">
@@ -74,22 +96,60 @@ export default function TaskDetails({
     return (
         <div className="bg-white md:rounded-xl shadow-lg border-x md:border border-blue-100 h-full flex flex-col overflow-hidden md:sticky md:top-6 animate-in slide-in-from-right md:slide-in-from-transparent duration-300">
             {/* Cabeçalho do Detalhe */}
-            <div className="p-4 border-b border-slate-100 bg-gradient-to-br from-blue-50/50 to-white flex justify-between items-start sticky top-0 z-10 backdrop-blur-md">
-                <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2">
-                        {/* Botão de Voltar Visível Apenas no Mobile */}
-                        <button
-                            onClick={() => setSelectedTask(null)}
-                            className="md:hidden p-2 -ml-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                        >
-                            <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Gestão da Missão</span>
+            <div className="p-4 border-b border-slate-100 bg-gradient-to-br from-blue-50/50 to-white sticky top-0 z-10 backdrop-blur-md">
+                <div className="flex items-center gap-2 mb-2">
+                    {/* Botão de Voltar Visível Apenas no Mobile */}
+                    <button
+                        onClick={() => setSelectedTask(null)}
+                        className="md:hidden p-2 -ml-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                    </button>
+                    <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest block">Gestão da Missão</span>
+                </div>
+
+                <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                        {editingId === 'main-task' ? (
+                            <div className="flex gap-2 items-center">
+                                <input
+                                    type="text"
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && saveEditing()}
+                                    autoFocus
+                                    className="flex-1 font-black text-slate-800 leading-tight text-lg border-2 border-blue-200 rounded-lg px-2 py-1 outline-none focus:border-blue-500 bg-white"
+                                />
+                                <button onClick={saveEditing} className="p-2 bg-green-500 text-white rounded-lg hover:bg-green-600 shadow-sm shrink-0">
+                                    <Check className="w-4 h-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <h3 className="font-black text-slate-800 leading-tight break-words text-lg">{selectedTask.text}</h3>
+                        )}
                     </div>
 
-                    <h3 className="font-black text-slate-800 leading-tight break-words text-lg">{selectedTask.text}</h3>
+                    <div className="flex items-center gap-1 shrink-0">
+                        {editingId !== 'main-task' && (
+                            <button 
+                                onClick={() => startEditing('main-task', selectedTask.text)}
+                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                title="Editar nome da missão"
+                            >
+                                <Edit2 className="w-5 h-5" />
+                            </button>
+                        )}
+                        <button
+                            onClick={() => { if (confirm('Excluir esta missão permanentemente?')) deleteTask(selectedTask.id) }}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                            title="Excluir missão"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                        </button>
+                    </div>
+                </div>
 
-                    <div className="flex flex-wrap items-center gap-3 mt-4">
+                <div className="flex flex-wrap items-center gap-3 mt-4">
                         <div className="flex items-center gap-1.5 bg-white px-2.5 py-1.5 rounded-xl border border-slate-200 shadow-sm">
                             <Clock className={`w-3.5 h-3.5 ${getDeadlineColor(selectedTask.deadline, 'text')}`} />
                             <input
@@ -129,14 +189,6 @@ export default function TaskDetails({
                         ))}
                     </div>
                 </div>
-
-                <button
-                    onClick={() => { if (confirm('Excluir esta missão permanentemente?')) deleteTask(selectedTask.id) }}
-                    className="p-2.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                >
-                    <Trash2 className="w-5 h-5" />
-                </button>
-            </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-8 bg-slate-50/20 pb-20 md:pb-4">
 
@@ -183,24 +235,51 @@ export default function TaskDetails({
                         </span>
                     </div>
 
-                    <div className="space-y-3 mb-6">
+                    <div className="space-y-3 mb-6 max-h-80 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-slate-200">
                         {selectedTask.subtasks?.map(sub => (
                             <div key={sub.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm group">
                                 <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                                        <button onClick={() => toggleSubtask(selectedTask.id, sub.id)} className="mt-0.5 transition-transform active:scale-90">
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <button onClick={() => toggleSubtask(selectedTask.id, sub.id)} className="mt-0.5 transition-transform active:scale-90 shrink-0">
                                             {sub.completed
                                                 ? <CheckSquare className="w-5 h-5 text-green-500" />
                                                 : <div className="w-5 h-5 border-2 border-slate-200 rounded-lg group-hover:border-blue-400 transition-colors" />
                                             }
                                         </button>
-                                        <span className={`text-sm font-bold break-words leading-tight ${sub.completed ? 'line-through text-slate-300' : 'text-slate-600'}`}>
-                                            {sub.text}
-                                        </span>
+                                        
+                                        {editingId === sub.id ? (
+                                            <div className="flex gap-2 flex-1">
+                                                <input
+                                                    type="text"
+                                                    value={editingValue}
+                                                    onChange={(e) => setEditingValue(e.target.value)}
+                                                    onKeyDown={(e) => e.key === 'Enter' && saveEditing()}
+                                                    autoFocus
+                                                    className="flex-1 text-sm font-bold border-b-2 border-blue-500 outline-none bg-transparent"
+                                                />
+                                                <button onClick={saveEditing} className="p-1.5 bg-green-500 text-white rounded-lg shadow-sm">
+                                                    <Check className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 flex-1 min-w-0 group/sub">
+                                                <span className={`flex-1 text-sm font-bold break-words leading-tight ${sub.completed ? 'line-through text-slate-300' : 'text-slate-600'}`}>
+                                                    {sub.text}
+                                                </span>
+                                                <button 
+                                                    onClick={() => startEditing(sub.id, sub.text)}
+                                                    className="p-1 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all"
+                                                    title="Editar sub-etapa"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                     <button
                                         onClick={() => deleteSubtask(selectedTask.id, sub.id)}
-                                        className="p-2 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                        className="p-2 text-slate-400 hover:text-red-600 transition-all shrink-0"
+                                        title="Excluir sub-etapa"
                                     >
                                         <Trash2 className="w-4 h-4" />
                                     </button>
@@ -246,7 +325,7 @@ export default function TaskDetails({
                                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{comment.author}</span>
                                     <button
                                         onClick={() => deleteComment(selectedTask.id, comment.id)}
-                                        className="p-1 text-slate-200 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                                        className="p-1 text-slate-400 hover:text-red-600 transition-all"
                                     >
                                         <X className="w-4 h-4" />
                                     </button>

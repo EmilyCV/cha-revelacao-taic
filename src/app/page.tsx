@@ -192,6 +192,14 @@ export default function Home() {
         }
     };
 
+    const updateSubtaskText = async (taskId: string, subId: string, newText: string) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (task) {
+            const updatedSubs = task.subtasks.map(s => s.id === subId ? { ...s, text: newText } : s);
+            await updateDoc(doc(db, 'tasks', taskId), { subtasks: updatedSubs });
+        }
+    };
+
     const deleteSubtask = async (taskId: string, subId: string) => {
         const task = tasks.find(t => t.id === taskId);
         if (task) {
@@ -229,6 +237,10 @@ export default function Home() {
 
     const updateTaskCategory = async (taskId: string, newCategory: string) => {
         await updateDoc(doc(db, 'tasks', taskId), { category: newCategory });
+    };
+
+    const updateTaskText = async (taskId: string, newText: string) => {
+        await updateDoc(doc(db, 'tasks', taskId), { text: newText });
     };
 
     // --- Guest List Actions ---
@@ -343,10 +355,12 @@ export default function Home() {
                                 selectedTask={selectedTask} 
                                 setSelectedTask={setSelectedTask} 
                                 deleteTask={deleteTask} 
+                                updateTaskText={updateTaskText}
                                 updateTaskDeadline={updateTaskDeadline} 
                                 updateTaskCategory={updateTaskCategory} 
                                 updateTaskSpent={updateTaskSpent}
                                 updateSubtaskSpent={updateSubtaskSpent}
+                                updateSubtaskText={updateSubtaskText}
                                 newSubtask={newSubtask} 
                                 setNewSubtask={setNewSubtask} 
                                 addSubtask={addSubtask} 
@@ -372,4 +386,3 @@ export default function Home() {
         </div>
     );
 }
-
